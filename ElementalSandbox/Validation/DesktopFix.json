@@ -1,0 +1,12 @@
+{
+  "platform": "macOS desktop",
+  "nativePlayerValidation": "PASS \u2014 all ten abilities ran in the native player.",
+  "fix": "Preserve GPU instancing shader variants in desktop builds (GraphicsSettings.m_InstancingStripping = KeepAll).",
+  "visuallyVerified": [
+    "venom.png",
+    "quake.png"
+  ],
+  "desktopOnly": true,
+  "androidBuild": "Stopped at user request",
+  "remaining": "The reconstructed VFX materials and layers are not yet visually identical to Three.js."
+}

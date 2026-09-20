@@ -1,0 +1,4 @@
+Idle: 131 bound curves, 0 unmatched curves, 10 seconds
+cast1: 131 bound curves, 0 unmatched curves, 1.433333 seconds
+cast2: 131 bound curves, 0 unmatched curves, 1.016667 seconds
+cast3: 131 bound curves, 0 unmatched curves, 3.25 seconds

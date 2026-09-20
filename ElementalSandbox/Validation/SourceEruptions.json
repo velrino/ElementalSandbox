@@ -1,0 +1,11 @@
+{
+  "desktopBuild": "Success",
+  "nativeRuntime": "PASS \u2014 all ten abilities ran in the native player.",
+  "smoke": "PASS: Ten abilities rendered; four-cast cap; body slicing; pause; landscape and portrait camera rendering.\n",
+  "visuallyReviewed": [
+    "venom.png",
+    "quake.png"
+  ],
+  "scope": "Source-based geometry, material, plate and particle upgrades for venom and quake; corrected source light directions",
+  "fullVisualParity": false
+}
