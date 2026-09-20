@@ -5,6 +5,30 @@ Native Unity 6000.5.1f1 / URP 17 project, ported from the Three.js Elemental San
 Open **Assets/ElementalSandbox/Scenes/ElementalSandbox.unity** and press **Play**.
 If the scene needs to be regenerated, use **Elemental Sandbox → Create or open sandbox scene**.
 
+## Screenshots
+
+Captures from the native macOS player. Click an image to view it at full size. These are saved validation captures; they may not reflect every subsequent visual change.
+
+| Volcanic Horror Ward | Caustic Bloom |
+| --- | --- |
+| [![Volcanic Horror Ward in Unity](Validation/NativeDesktop/ward.png)](Validation/NativeDesktop/ward.png) | [![Caustic Bloom in Unity](Validation/NativeDesktop/acid.png)](Validation/NativeDesktop/acid.png) |
+
+| Arborist's Growth | Cyber Serpent |
+| --- | --- |
+| [![Arborist's Growth in Unity](Validation/NativeDesktop/growth.png)](Validation/NativeDesktop/growth.png) | [![Cyber Serpent in Unity](Validation/NativeDesktop/cyber.png)](Validation/NativeDesktop/cyber.png) |
+
+| Crystallized Venom Surge | Monolith Rift |
+| --- | --- |
+| [![Crystallized Venom Surge in Unity](Validation/NativeDesktop/venom.png)](Validation/NativeDesktop/venom.png) | [![Monolith Rift in Unity](Validation/NativeDesktop/quake.png)](Validation/NativeDesktop/quake.png) |
+
+| Sumi Tide | Cosmic Singularity |
+| --- | --- |
+| [![Sumi Tide in Unity](Validation/NativeDesktop/ink.png)](Validation/NativeDesktop/ink.png) | [![Cosmic Singularity in Unity](Validation/NativeDesktop/astral.png)](Validation/NativeDesktop/astral.png) |
+
+| Baleful Cascade | Judgment Cascade |
+| --- | --- |
+| [![Baleful Cascade in Unity](Validation/NativeDesktop/cascade.png)](Validation/NativeDesktop/cascade.png) | [![Judgment Cascade in Unity](Validation/NativeDesktop/rend.png)](Validation/NativeDesktop/rend.png) |
+
 ## Controls
 
 | Action | Desktop | Touch |
@@ -22,7 +46,7 @@ The seven ground casts use a circle; Cyber Serpent, Venom Surge and Monolith Rif
 
 - Ten playable abilities, original names, keys, ranges, cooldowns and timings.
 - Original character, idle animation, three cast animations, target model, stone textures, HDR reference, and HUD sigils.
-- Twenty-five meshes exported from the original geometry code, including the canonical Cyber Serpent mesh.
+- Twenty-seven meshes exported from the original geometry code, including the canonical Cyber Serpent mesh.
 - Native C# effects, custom URP shaders, raymarched gas/nebula, bloom, and frame distortion after transparent rendering.
 - Live editing for the implemented parameters, simulation pause, local preset save/load, clipboard import/export with validation, and graphics presets.
 - Camera rendering checked in desktop, landscape and portrait aspect ratios.
@@ -35,7 +59,7 @@ All **2,696 source setting values** are preserved in `Resources/Elemental/Defaul
 
 ## Desktop focus
 
-Current work targets this Mac desktop. Android build work was stopped at the user’s request. The native desktop build is `Builds/macOS/ElementalSandbox.app`.
+Current development and validation target macOS desktop. Mobile development is paused. The native desktop build is `Builds/macOS/ElementalSandbox.app`.
 
 The missing stone/crystal bug in the initial native build was caused by instancing shader variant stripping. `ProjectSettings/GraphicsSettings.asset` now preserves these variants. `Validation/NativeDesktop/` contains captures from the actual compiled player, including Venom Surge and Monolith Rift.
 
@@ -58,6 +82,8 @@ The source project must have its npm dependencies installed. The exporter resolv
 Original asset licensing remains applicable; see `SourceReference/ThreeJS/README.md`.
 
 
-### Atualização dos efeitos de desktop
+## Desktop effects update
 
-Venom Surge e Monolith Rift agora usam a distribuição e animação do original, materiais próprios em HLSL, placas Voronoi e emissores separados de gás/poeira e spray. A iluminação direcional foi corrigida para a conversão de coordenadas do Three.js. Build macOS e testes nativos passaram. Detalhes e diferenças ainda existentes: [Validation/SourceEruptions.md](Validation/SourceEruptions.md).
+Venom Surge and Monolith Rift now use the original distribution and animation formulas, dedicated HLSL materials, Voronoi ground plates, and separate gas, dust, and spray emitters. Directional lighting was corrected for the Three.js-to-Unity coordinate conversion. The macOS build and native runtime checks passed for this revision.
+
+See [the eruption port notes](Validation/SourceEruptions.md) for implementation details and remaining visual differences.
