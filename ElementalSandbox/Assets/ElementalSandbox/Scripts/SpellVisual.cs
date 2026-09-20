@@ -13,6 +13,7 @@ namespace ElementalSandbox
         public float Age,Distance;
         public bool Active {get;private set;}
         readonly ElementalApp app;
+        public ElementalApp App=>app;
         SandboxSettings S=>app.Settings;
         readonly List<Material> materials=new List<Material>();
         readonly List<Mesh> ownedMeshes=new List<Mesh>();
@@ -21,6 +22,8 @@ namespace ElementalSandbox
         readonly List<Matrix4x4>[] instances=new List<Matrix4x4>[6];
         readonly Matrix4x4[] drawBuffer=new Matrix4x4[512];
         SourceEruption sourceEruption;
+        SourceCascade sourceCascade;
+        SourceGrowth sourceGrowth;
         Material stone,energy,pool,volume,sparkMat;
         Transform seed,disc,core,cloud,crown,shock,pillar,halo;
         ParticleSystem particles;
@@ -40,7 +43,7 @@ namespace ElementalSandbox
         {
             app=owner;Slot=slot;Id=S.Abilities[slot].id;Root=new GameObject(S.Abilities[slot].hint);Root.transform.SetParent(app.EffectsRoot,false);
             for(int i=0;i<6;i++)instances[i]=new List<Matrix4x4>();
-            Build();if(Id=="venom"||Id=="quake")sourceEruption=new SourceEruption(this,S);Root.SetActive(false);
+            Build();if(Id=="venom"||Id=="quake")sourceEruption=new SourceEruption(this,S);if(Id=="cascade")sourceCascade=new SourceCascade(this,S);if(Id=="growth")sourceGrowth=new SourceGrowth(this,S);Root.SetActive(false);
         }
         Material Mat(string shader,Color color,float mode=0,float glow=1)
         {
@@ -67,7 +70,7 @@ namespace ElementalSandbox
             energy=Mat("Energy",accent,5,1.3f);pool=Mat("Energy",accent,Id=="acid"||Id=="ward"||Id=="ink"?1:2,.9f);
             seed=Plane("Travelling seed",energy);disc=Plane("Ground field",pool);shock=MeshPart("Shock ring",MeshLibrary.Ring(128,.975f),Mat("Energy",accent,6,1));
             sparkMat=Mat("Energy",accent,5,2);var pg=new GameObject("Particles");pg.transform.SetParent(Root.transform,false);particles=pg.AddComponent<ParticleSystem>();particles.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);var main=particles.main;main.playOnAwake=false;main.loop=false;main.duration=20;main.startLifetime=1.5f;main.startSize=.075f;main.startSpeed=2;main.maxParticles=2400;main.simulationSpace=ParticleSystemSimulationSpace.World;var emission=particles.emission;emission.enabled=false;var shape=particles.shape;shape.enabled=false;var col=particles.colorOverLifetime;col.enabled=true;var gradient=new Gradient();gradient.SetKeys(new[]{new GradientColorKey(Color.white,0),new GradientColorKey(accent,.2f),new GradientColorKey(accent,1)},new[]{new GradientAlphaKey(1,0),new GradientAlphaKey(1,.2f),new GradientAlphaKey(0,1)});col.color=gradient;var size=particles.sizeOverLifetime;size.enabled=true;size.size=new ParticleSystem.MinMaxCurve(1,new AnimationCurve(new Keyframe(0,.3f),new Keyframe(.1f,1),new Keyframe(1,0)));pg.GetComponent<ParticleSystemRenderer>().sharedMaterial=sparkMat;
-            if(Id=="venom"||Id=="quake"||Id=="ward"||Id=="astral"||Id=="cascade"||Id=="rend")
+            if(Id=="venom"||Id=="quake"||Id=="ward"||Id=="astral"||Id=="rend")
             {
                 stone=Mat("Surface",Id=="quake"?new Color(.43f,.4f,.34f):Id=="ward"?new Color(.055f,.024f,.023f):Id=="venom"?C("colorBody","#653399"):Id=="cascade"?C("colorBladeBody","#08252f"):C("colorShardBody","#1b2436"),Id=="quake"?1:Id=="ward"?2:0,.7f);
                 stone.SetColor("_HotColor",(Id=="venom"?C("colorVenom","#8aff28"):accent));stone.SetTexture("_MainTex",Resources.Load<Texture2D>("Elemental/textures/cathedral/color"));
@@ -82,13 +85,7 @@ namespace ElementalSandbox
             if(Id=="growth")
             {
                 stone=Mat("Surface",new Color(.075f,.15f,.075f),2,.7f);stone.SetColor("_HotColor",accent);core=Primitive("Arcane heart",PrimitiveType.Sphere,energy);
-                for(int i=0;i<14;i++)Line("Growing vine",stone,40,.09f);
-                var leaf=PetalMesh();for(int i=0;i<72;i++)parts.Add(MeshPart(i<36?"Bloom petal":"Foliage",leaf,stone));
-                Line("Target lance",Mat("Energy",accent,6,4),20,.12f);
-            }
-            if(Id=="cascade")
-            {
-                core=Primitive("Crown heart",PrimitiveType.Sphere,energy);for(int i=0;i<28;i++)Line("Rising wisp",Mat("Energy",accent,6,.7f),40,.045f);for(int i=0;i<8;i++)Line("Thrown blade trail",energy,16,.07f);
+                                Line("Target lance",Mat("Energy",accent,6,4),20,.12f);
             }
             if(Id=="ink")
             {
@@ -106,7 +103,7 @@ namespace ElementalSandbox
         }
         public void Spawn(Vector3 origin,Vector3 target)
         {
-            Origin=origin;Target=target;Distance=Vector3.Distance(origin,target);Direction=(target-origin).normalized;if(Direction.sqrMagnitude<.01f)Direction=Vector3.forward;Age=previousAge=0;travel=Distance/Mathf.Max(.1f,F("speed",50)*S.F("global.speed",1));Active=true;impacted=false;shots=0;nextShot=1.7f;struck.Clear();Root.SetActive(true);particles.Clear();foreach(var l in strands)l.enabled=false;sourceEruption?.Spawn();
+            Origin=origin;Target=target;Distance=Vector3.Distance(origin,target);Direction=(target-origin).normalized;if(Direction.sqrMagnitude<.01f)Direction=Vector3.forward;Age=previousAge=0;travel=Distance/Mathf.Max(.1f,F("speed",50)*S.F("global.speed",1));Active=true;impacted=false;shots=0;nextShot=1.7f;struck.Clear();Root.SetActive(true);particles.Clear();foreach(var l in strands)l.enabled=false;sourceEruption?.Spawn();sourceCascade?.Spawn();sourceGrowth?.Spawn();
         }
         public void Retire(){Active=false;Root.SetActive(false);particles.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);}
         void Burst(Vector3 pos,int count,float speed=4)
@@ -120,19 +117,19 @@ namespace ElementalSandbox
             foreach(var m in materials){m.SetFloat("_Age",Mathf.Max(0,t));m.SetFloat("_Opacity",env*S.F("global.opacity",1));}
             energy.SetFloat("_Glow",1.3f*S.F("global.glow",1));pool.SetFloat("_Glow",.9f*S.F("global.glow",1));
             Billboard(seed,Focus+Vector3.up*(Id=="astral"?F("coreHeight",3.4f):1.1f),Vector3.one*.65f);seed.gameObject.SetActive(t<0);energy.SetFloat("_Opacity",t<0?1:env);
-            Floor(disc,Target,Radius*Mathf.Max(.001f,env));disc.gameObject.SetActive(t>=0&&Id!="cyber"&&Id!="quake"&&Id!="venom");
+            Floor(disc,Target,Radius*Mathf.Max(.001f,env));disc.gameObject.SetActive(t>=0&&Id!="cyber"&&Id!="quake"&&Id!="venom"&&Id!="cascade"&&Id!="growth");
             shock.gameObject.SetActive(t>=0&&t<1.2f);shock.position=Target+Vector3.up*.07f;shock.localScale=Vector3.one*Mathf.Max(.01f,Radius*(1+t*1.7f));shock.GetComponent<Renderer>().sharedMaterial.SetFloat("_Opacity",Mathf.Clamp01(1-t/1.2f));
-            if(t>=0&&!impacted){impacted=true;if(sourceEruption==null)Burst(Target+Vector3.up*.3f,180,4);app.Shake(Id=="quake"?.5f:.18f);}
-            if(dt>0){particles.Simulate(dt,false,false);if(sourceEruption==null&&t>0&&t<Life&&Mathf.FloorToInt(Age*18)!=Mathf.FloorToInt(previousAge*18))Burst(Target+new Vector3((H(Age)-.5f)*Radius, .2f,(H(Age*2)-.5f)*Radius),4,.5f);}
+            if(t>=0&&!impacted){impacted=true;if(sourceEruption==null&&sourceCascade==null)Burst(Target+Vector3.up*.3f,180,4);app.Shake(Id=="quake"?.5f:.18f);}
+            if(dt>0){particles.Simulate(dt,false,false);if(sourceEruption==null&&sourceCascade==null&&t>0&&t<Life&&Mathf.FloorToInt(Age*18)!=Mathf.FloorToInt(previousAge*18))Burst(Target+new Vector3((H(Age)-.5f)*Radius, .2f,(H(Age*2)-.5f)*Radius),4,.5f);}
             foreach(var list in instances)list.Clear();
             if(Id=="venom"||Id=="quake")Eruption(t,env);
             else if(Id=="ward")Ward(t,env);
             else if(Id=="acid")Acid(t,env);
-            else if(Id=="growth")Growth(t,env);
+            else if(Id=="growth"){sourceGrowth.Tick(Age,travel,dt,Mathf.Clamp01((t-Life)/Mathf.Max(.01f,Fade)));Growth(t,env);}
             else if(Id=="cyber")Cyber(t,env);
             else if(Id=="ink")Ink(t,env,dt);
             else if(Id=="astral")Astral(t,env,dt);
-            else if(Id=="cascade")Cascade(t,env);
+            else if(Id=="cascade")sourceCascade.Tick(Age,travel,dt,Mathf.Clamp01((t-Life)/Mathf.Max(.01f,Fade)));
             else if(Id=="rend")Rend(t,env);
             if(stone!=null){stone.SetFloat("_Opacity",Id=="cyber"?1-Mathf.Clamp01(t/Fade):Mathf.Max(env,Id=="venom"||Id=="quake"?Mathf.Clamp01(Age/.2f)*(1-Mathf.Clamp01((t-Life)/Fade)):0));for(int k=0;k<6;k++){int count=instances[k].Count;if(count==0)continue;instances[k].CopyTo(drawBuffer);Graphics.DrawMeshInstanced(MeshLibrary.Get((Id=="quake"||Id=="ward"?"monolith":Id=="cascade"||Id=="rend"?"shard":"crystal")+k),0,stone,drawBuffer,count,null,ShadowCastingMode.On,true);}}
             if(dt>0&&(t>=0||!S.Abilities[Slot].zone)&&t<Life&&Id!="growth"&&Id!="cascade"&&Id!="astral"&&Id!="ink"&&(Id!="rend"||t>=F("chargeTime",1.7f)))
@@ -156,13 +153,19 @@ namespace ElementalSandbox
         {
             cloud.gameObject.SetActive(t>=0);float h=F("mistHeight",5.2f);cloud.position=Target+Vector3.up*h*.5f*env;cloud.localScale=new Vector3(Radius*2,h,Radius*2)*Mathf.Max(.001f,env);volume.SetFloat("_Density",F("mistDensity",2.9f));volume.SetColor("_BaseColor",C("colorMistBody","#4f8f1c"));volume.SetColor("_HotColor",C("colorMistLight","#93a862"));pool.SetColor("_BaseColor",C("colorAcid","#8fff1e"));
         }
+        // The nest, the foliage and the wither now come from SourceGrowth.
+        // What is left here is the bloom heart and the lance it shoots, which
+        // still ride the generic layers.
         void Growth(float t,float env)
         {
-            float grow=Mathf.Clamp01((t-F("vineDelay",.18f))/F("vineTime",1.15f))*env;float bloom=Mathf.Clamp01((t-F("bloomDelay",.85f))/F("bloomTime",1.05f))*env;Vector3 center=Target+Vector3.up*F("bloomHeight",3.2f)*grow;core.position=center;core.localScale=Vector3.one*.5f*bloom;
-            for(int i=0;i<14;i++){var l=strands[i];l.enabled=t>0;l.widthMultiplier=.05f+.1f*grow;for(int j=0;j<40;j++){float u=j/39f,a=i*Mathf.PI*2/14+u*2.2f;float r=Radius*F("vineSpread",.75f)*(1-u)*grow;Vector3 p=Target+new Vector3(Mathf.Cos(a)*r,F("vineHeight",3.2f)*u*grow,Mathf.Sin(a)*r);l.SetPosition(j,p);}}
-            for(int i=0;i<parts.Count;i++){float a=(i%12)*Mathf.PI*2/12+(i/12)*.35f;var p=parts[i];if(i<36){float layer=i/12;float size=F("bloomScale",2.1f)*(1-layer*.22f)*bloom;p.position=center;p.rotation=Quaternion.Euler(Mathf.Lerp(-12,60-layer*18,bloom),a*Mathf.Rad2Deg,0);p.localScale=new Vector3(.55f,1,1)*size;}else{float u=H(i),r=Radius*(1-u)*.6f;p.position=Target+new Vector3(Mathf.Cos(a)*r,F("vineHeight",3.2f)*u*grow,Mathf.Sin(a)*r);p.rotation=Quaternion.Euler(25,a*Mathf.Rad2Deg,0);p.localScale=new Vector3(.3f,1,.6f)*grow;}}
-            var laser=strands[14];laser.enabled=false;if(t>nextShot&&t<Life){var d=app.Nearest(Target,Radius*1.8f);if(d!=null){nextShot=t+1.35f;shots++;shotTarget=d.Position+Vector3.up;d.Cut((d.Position-Target).normalized*7+Vector3.up*2);Burst(shotTarget,80,3);}else nextShot=t+.3f;}
-            float shotAge=t-(nextShot-1.35f);if(shots>0&&shotAge>=0&&shotAge<.38f){laser.enabled=true;laser.widthMultiplier=.13f*(1-shotAge/.38f);for(int j=0;j<20;j++){float u=j/19f;laser.SetPosition(j,Vector3.Lerp(center,shotTarget,u)+Vector3.up*Mathf.Sin(u*Mathf.PI)*.15f);}}
+            float grow=Mathf.Clamp01((t-F("vineDelay",.18f))/F("vineTime",1.15f))*env;
+            float bloom=Mathf.Clamp01((t-F("bloomDelay",.85f))/F("bloomTime",1.05f))*env;
+            Vector3 center=Target+Vector3.up*F("bloomHeight",3.2f)*grow;
+            core.position=center;core.localScale=Vector3.one*.5f*bloom;
+            var laser=strands[0];laser.enabled=false;
+            if(t>nextShot&&t<Life){var d=app.Nearest(Target,Radius*1.8f);if(d!=null){nextShot=t+1.35f;shots++;shotTarget=d.Position+Vector3.up;d.Cut((d.Position-Target).normalized*7+Vector3.up*2);Burst(shotTarget,80,3);}else nextShot=t+.3f;}
+            float shotAge=t-(nextShot-1.35f);
+            if(shots>0&&shotAge>=0&&shotAge<.38f){laser.enabled=true;laser.widthMultiplier=.13f*(1-shotAge/.38f);for(int j=0;j<20;j++){float u=j/19f;laser.SetPosition(j,Vector3.Lerp(center,shotTarget,u)+Vector3.up*Mathf.Sin(u*Mathf.PI)*.15f);}}
         }
         Vector3 shotTarget;
         void Cyber(float t,float env)
@@ -182,14 +185,6 @@ namespace ElementalSandbox
             for(int i=0;i<56;i++){float a=H(i)*Mathf.PI*2+t*(.5f+H(i*7))/(1+Mathf.Max(0,Life-t)*.2f);float r=Mathf.Lerp(Radius*F("shardSpread",1.35f),radius*.6f,Mathf.Clamp01(t/Life))*(.4f+H(i*3));float y=(H(i*5)-.5f)*r*.9f;Vector3 p=center+new Vector3(Mathf.Cos(a)*r,y,Mathf.Sin(a)*r)*env;Instance(i,p,Quaternion.Euler(i*31+t*60,i*17+t*80,i*43),new Vector3(.14f,.3f+H(i)*.55f,.14f)*env);}
             if(t>.4f&&t<Life&&dt>0)foreach(var d in app.Dummies)if(Vector3.Distance(d.Position,Target)<Radius*1.1f||struck.Contains(d)){if(!struck.Contains(d))struck.Add(d);d.Pull(center,dt,5,true);}
         }
-        void Cascade(float t,float env)
-        {
-            Vector3 center=Target+Vector3.up*F("crownHeight",3.1f)*env;core.position=center;core.localScale=Vector3.one*.6f*env;
-            for(int i=0;i<56;i++){float a=H(i)*Mathf.PI*2,b=Mathf.Acos(H(i*1.7f)*2-1);Vector3 v=new Vector3(Mathf.Sin(b)*Mathf.Cos(a),Mathf.Cos(b),Mathf.Sin(b)*Mathf.Sin(a));float scale=F("crownScale",1.65f);float length=(.6f+H(i*3.9f)*1.2f)*scale;Instance(i,center+v*.2f,Quaternion.FromToRotation(Vector3.up,v),new Vector3(F("bladeWidth",.085f)*4,length,F("bladeWidth",.085f)*2)*env);}
-            for(int i=0;i<28;i++){var l=strands[i];l.enabled=t>=0;for(int j=0;j<40;j++){float u=j/39f,a=i*Mathf.PI*2/28+u*2.3f+t*.15f;float r=Radius*(1-u)*env;l.SetPosition(j,Target+new Vector3(Mathf.Cos(a)*r,F("wispHeight",4.4f)*u*env,Mathf.Sin(a)*r));}}
-            if(t>nextShot&&t<Life){var d=app.Nearest(Target,Radius*2);if(d!=null){nextShot=t+1.4f;shotTarget=d.Position+Vector3.up;shots++;d.Hit((d.Position-Target).normalized*8+Vector3.up*2);Burst(shotTarget,80,5);}else nextShot=t+.3f;}
-            for(int i=28;i<36;i++){var l=strands[i];float age=t-(nextShot-1.4f)-(i-28)*.07f;l.enabled=shots>0&&age>0&&age<.45f;if(l.enabled){float f=Mathf.Clamp01(age/.34f);for(int j=0;j<16;j++){float u=Mathf.Clamp01(f-j/15f*.3f);l.SetPosition(j,Vector3.Lerp(center,shotTarget,u)+Vector3.up*Mathf.Sin(u*Mathf.PI)*.5f);}Instance(i,Vector3.Lerp(center,shotTarget,f),Quaternion.FromToRotation(Vector3.up,shotTarget-center),new Vector3(.12f,1.45f,.08f));}}
-        }
         void Rend(float t,float env)
         {
             float charge=F("chargeTime",1.7f),blast=Mathf.Clamp01((t-charge)/F("pillarRise",.34f))*env;float height=F("pillarHeight",30);pillar.gameObject.SetActive(t>charge);pillar.position=Target;pillar.localScale=new Vector3(F("pillarRadius",.28f)*3,height,F("pillarRadius",.28f)*3)*Mathf.Max(.001f,blast);core.gameObject.SetActive(t>charge);Billboard(core,Target+Vector3.up*height*F("starSeat",.42f),Vector3.one*F("starSize",2)*blast*2);halo.gameObject.SetActive(t>charge);halo.position=Target+Vector3.up*height*F("haloSeat",.87f)*blast;halo.rotation=Quaternion.Euler(15,t*20,10);halo.localScale=Vector3.one*F("haloRadius",1.5f)*blast;
@@ -206,6 +201,6 @@ namespace ElementalSandbox
         {
             const int rows=18,cols=6;var p=new Vector3[(rows+1)*(cols+1)];var uv=new Vector2[p.Length];var ix=new List<int>();for(int y=0;y<=rows;y++)for(int x=0;x<=cols;x++){int i=y*(cols+1)+x;float u=(float)y/rows,v=(float)x/cols*2-1;p[i]=new Vector3(v*Mathf.Sin(u*Mathf.PI)*.5f,.2f*Mathf.Sin(u*Mathf.PI)-v*v*.08f,u);uv[i]=new Vector2((float)x/cols,u);if(y<rows&&x<cols)ix.AddRange(new[]{i,i+1,i+cols+1,i+1,i+cols+2,i+cols+1});}var m=new Mesh{name="Petal",vertices=p,uv=uv,triangles=ix.ToArray()};m.RecalculateNormals();ownedMeshes.Add(m);return m;
         }
-        public void Dispose(){sourceEruption?.Dispose();foreach(var m in materials)UnityEngine.Object.Destroy(m);foreach(var mesh in ownedMeshes)UnityEngine.Object.Destroy(mesh);UnityEngine.Object.Destroy(Root);}
+        public void Dispose(){sourceEruption?.Dispose();sourceCascade?.Dispose();sourceGrowth?.Dispose();foreach(var m in materials)UnityEngine.Object.Destroy(m);foreach(var mesh in ownedMeshes)UnityEngine.Object.Destroy(mesh);UnityEngine.Object.Destroy(Root);}
     }
 }
