@@ -40,7 +40,7 @@ Shader "Elemental/AcidMist"
  float _Radius,_Height,_Steps,_Density,_Absorb,_Scale,_Detail,_Filament,_Threshold;
  float _Rise,_Stretch,_Twist,_Spin,_Edge,_Flare,_Falloff,_Skirt,_Lobe,_Tear;
  float _GroundGlow,_GroundFalloff,_Shadow,_ShadowStep,_Ambient,_Saturate;
- float _Boil,_Dissolve,_Seed,_Fade,_Opacity,_Glow;
+ float _Boil,_Dissolve,_Seed,_Fade,_Opacity,_Glow,_Inner;
  CBUFFER_END
  float3 _ElementalLightDir;
 
@@ -62,6 +62,8 @@ Shader "Elemental/AcidMist"
   // Soft wall, and a skirt that keeps the gas hugging the floor just past the
   // boundary instead of stopping dead on it.
   float wall=smoothstep(1.0+_Skirt*(1.0-h),_Edge,r);
+  // A self-cast leaves the caster standing in clear air: no gas inside _Inner.
+  wall*=smoothstep(_Inner*.7,_Inner,r);
   return wall*pow(1.0-h,_Falloff);
  }
 

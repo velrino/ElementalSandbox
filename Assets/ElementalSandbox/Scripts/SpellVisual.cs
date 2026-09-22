@@ -286,6 +286,8 @@ namespace ElementalSandbox
             volume.SetColor("_ColorDeep",C("colorMistDeep","#0a1e05"));volume.SetColor("_ColorBody",C("colorMistBody","#4f8f1c"));
             volume.SetColor("_ColorEdge",C("colorMistEdge","#b7f25a"));volume.SetColor("_ColorGlow",C("colorAcid","#8fff1e"));volume.SetColor("_ColorLight",C("colorMistLight","#93a862"));
             pool.SetColor("_BaseColor",C("colorAcid","#8fff1e"));
+            // Self cast: the pool and the gas ring the caster, clear in the middle.
+            float inner=Mathf.Clamp01(F("clearRadius",1.6f)/Mathf.Max(.1f,Radius));pool.SetFloat("_Inner",inner);volume.SetFloat("_Inner",inner);ringMat.SetFloat("_Inner",inner);
             // The ring. Its quad is wider than the footprint because the halo
             // and the wobble both reach past R, and every threshold in the
             // shader is in metres so the band keeps its width when the zone is

@@ -24,7 +24,7 @@ Shader "Elemental/AcidRing"
  float4 _ColorRing,_ColorCore;
  float _QuadSize,_Radius,_Width,_Core,_Halo,_HaloWidth,_Spill;
  float _Wobble,_WobbleScale,_Chevrons,_ChevronDepth,_Scroll;
- float _Sweep,_SweepSpeed,_SweepWidth,_Ticks,_Boil,_Seed,_Fade,_Opacity,_Glow;
+ float _Sweep,_SweepSpeed,_SweepWidth,_Ticks,_Boil,_Seed,_Fade,_Opacity,_Glow,_Inner;
  CBUFFER_END
 
  struct A{float4 positionOS:POSITION;float2 uv:TEXCOORD0;};
@@ -63,6 +63,8 @@ Shader "Elemental/AcidRing"
   // Inward only: the wash belongs to the pool, and spilling it outward makes
   // the footprint unreadable.
   float spill=smoothstep(R,R*.35,rad)*_Spill;
+  // Self cast: the wash stops short of the clear centre the caster stands in.
+  spill*=smoothstep(_Inner*R*.8,_Inner*R*1.15,rad);
 
   // Energy running round the band.
   float chev=pow(.5+.5*cos(ang*_Chevrons-_SandboxTime*_Scroll*TAU),3.0);

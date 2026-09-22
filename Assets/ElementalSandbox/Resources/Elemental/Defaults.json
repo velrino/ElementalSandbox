@@ -18885,6 +18885,13 @@
       "number": 4.5,
       "text": "",
       "flag": false
+    },
+    {
+      "key": "acid.clearRadius",
+      "kind": "number",
+      "number": 1.6,
+      "text": "",
+      "flag": false
     }
   ],
   "abilities": [
