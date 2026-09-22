@@ -50,6 +50,14 @@ namespace ElementalSandbox
 
         public static Mesh Half(Mesh source,Transform transform,float height,bool upper,Vector3 origin)
         {
+            // `source` is a BakeMesh snapshot, which already carries the rig's
+            // scale: this dummy's skin has a lossyScale of ~92, its shared mesh
+            // is 0.02 units tall, and the snapshot comes back 1.7 units tall —
+            // world size. Running it back through TransformPoint applied that
+            // ~92 a second time, which is what turned a severed body into a
+            // 145-metre slab lying across the stage. The snapshot therefore
+            // needs the renderer's rotation and position and nothing else.
+            var toWorld=Matrix4x4.TRS(transform.position,transform.rotation,Vector3.one);
             var vertices=source.vertices;var normals=source.normals;var uvs=source.uv;var triangles=source.triangles;
             var output=new List<Vertex>();var indices=new List<int>();
             // Cut segments, one per crossing triangle, kept as ordered pairs so
@@ -58,7 +66,7 @@ namespace ElementalSandbox
             for(int i=0;i<triangles.Length;i+=3)
             {
                 var polygon=new List<Vertex>(4);
-                for(int j=0;j<3;j++){int k=triangles[i+j];polygon.Add(new Vertex{p=transform.TransformPoint(vertices[k]),n=normals.Length>k?transform.TransformDirection(normals[k]).normalized:Vector3.up,uv=uvs.Length>k?uvs[k]:Vector2.zero});}
+                for(int j=0;j<3;j++){int k=triangles[i+j];polygon.Add(new Vertex{p=toWorld.MultiplyPoint3x4(vertices[k]),n=normals.Length>k?toWorld.MultiplyVector(normals[k]).normalized:Vector3.up,uv=uvs.Length>k?uvs[k]:Vector2.zero});}
                 var clipped=new List<Vertex>(4);var crossing=new List<Vertex>(2);
                 for(int j=0;j<polygon.Count;j++)
                 {

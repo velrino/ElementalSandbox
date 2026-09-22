@@ -6,6 +6,10 @@ namespace ElementalSandbox
     {
         public bool Alive {get;private set;}=true;
         public int SliceParts=>fragments.Count;
+        // Longest edge of any severed piece, in metres. A body cut at the waist
+        // cannot exceed its own height; anything far above that means the slice
+        // has picked the rig's scale up twice again. See ElementalMeshSlice.Half.
+        public float LargestFragment{get{float largest=0;foreach(var m in fragmentMeshes)if(m!=null){var size=m.bounds.size;largest=Mathf.Max(largest,Mathf.Max(size.x,Mathf.Max(size.y,size.z)));}return largest;}}
         public Vector3 Position=>fragments.Count>0?new Vector3(fragments[0].position.x,transform.position.y,fragments[0].position.z):hip!=null?new Vector3(hip.position.x,transform.position.y,hip.position.z):transform.position;
         ElementalApp app;Transform model,hip;int index,count;float age;bool consumed;
         readonly List<Rigidbody> bodies=new List<Rigidbody>();
@@ -17,7 +21,7 @@ namespace ElementalSandbox
         public void Initialize(ElementalApp owner,int i,int n)
         {
             app=owner;index=i;count=n;Place();var prefab=Resources.Load<GameObject>("Elemental/Models/dummy");if(prefab==null)throw new System.InvalidOperationException("Original dummy FBX missing.");model=Instantiate(prefab,transform).transform;ElementalApp.NormalizeModel(model,app.Settings.F("dummies.height",1.78f));foreach(var a in model.GetComponentsInChildren<Animator>())a.enabled=false;foreach(var a in model.GetComponentsInChildren<Animation>())a.enabled=false;
-            material=new Material(Shader.Find("Elemental/Surface"));material.SetColor("_BaseColor",app.Settings.C("dummies.look.color","#1b2029"));material.SetColor("_EdgeColor",app.Settings.C("dummies.look.rimColor","#6fd2ff"));material.SetColor("_HotColor",new Color(.1f,.2f,.3f));material.SetFloat("_Mode",4);material.SetFloat("_Glow",app.Settings.F("dummies.look.rimEmissive",1.5f));material.SetFloat("_Opacity",1);
+            material=new Material(Shader.Find("Elemental/Surface"));material.SetColor("_BaseColor",app.Settings.C("dummies.look.color","#1b2029"));material.SetColor("_EdgeColor",app.Settings.C("dummies.look.rimColor","#6fd2ff"));material.SetColor("_HotColor",new Color(.1f,.2f,.3f));material.SetFloat("_Mode",4);material.SetFloat("_Glow",app.Settings.F("dummies.look.rimEmissive",1.5f));material.SetFloat("_Roughness",.78f);material.SetFloat("_Metallic",.15f);material.SetFloat("_Flat",0);material.SetFloat("_Opacity",1);
             foreach(var r in model.GetComponentsInChildren<Renderer>()){var mats=r.sharedMaterials;for(int j=0;j<mats.Length;j++)mats[j]=material;r.sharedMaterials=mats;}
             foreach(var t in model.GetComponentsInChildren<Transform>()){bones.Add(t);restPositions.Add(t.localPosition);restRotations.Add(t.localRotation);string name=t.name.ToLowerInvariant();if(name.Contains("hips"))hip=t;if(!IsBody(name))continue;var rb=t.gameObject.AddComponent<Rigidbody>();rb.mass=name.Contains("hips")?5:1;rb.isKinematic=true;rb.interpolation=RigidbodyInterpolation.Interpolate;rb.linearDamping=.15f;rb.angularDamping=.8f;var c=t.gameObject.AddComponent<SphereCollider>();float worldRadius=name.Contains("head")?.11f:name.Contains("hips")?.13f:.075f;c.radius=worldRadius/Mathf.Max(.001f,t.lossyScale.x);bodies.Add(rb);}
             foreach(var rb in bodies){var p=rb.transform.parent;Rigidbody parent=null;while(p!=null&&p!=transform){parent=p.GetComponent<Rigidbody>();if(parent!=null)break;p=p.parent;}if(parent==null)continue;var joint=rb.gameObject.AddComponent<CharacterJoint>();joint.connectedBody=parent;joint.enableProjection=true;joint.lowTwistLimit=new SoftJointLimit{limit=-35};joint.highTwistLimit=new SoftJointLimit{limit=35};joint.swing1Limit=new SoftJointLimit{limit=45};joint.swing2Limit=new SoftJointLimit{limit=30};}

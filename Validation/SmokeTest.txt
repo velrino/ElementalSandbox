@@ -1,1 +1,1 @@
-PASS: Ten abilities rendered; four-cast cap; body slicing; pause; landscape and portrait camera rendering.
+PASS: Ten abilities rendered; four-cast cap; body slicing at body scale; pause; landscape and portrait camera rendering.
