@@ -43,15 +43,22 @@ namespace ElementalSandbox
         // walked the line — stones, dust, decals, the light — walks PathPoint
         // instead, so the two shapes share one code path.
         public bool Ring=>Id=="venom"||Id=="quake";
-        public float RingRadius=>Mathf.Max(1,F("guardRadius",4));
-        float ringPhase;
+        // Cast on the body rather than at the pointer: the guard rings always, the
+        // three summons when they were cast with no offset.
+        public bool SelfCast{get;private set;}
+        // Sweep casts trace the circle first — the seed runs round the caster and
+        // the effect only rises once the ring has closed. The guard rings do it
+        // with their eruption front; the summons do it with the seed and an arc.
+        public bool Sweep=>Ring||(SelfCast&&(Id=="acid"||Id=="growth"||Id=="astral"));
+        public float RingRadius=>Ring?Mathf.Max(1,F("guardRadius",4)):Radius;
+        float ringPhase;Transform sweepArc;Material sweepMat;
         public Vector3 PathPoint(float along,float lateral,float width,out Vector3 tangent,out Vector3 outward)
         {
-            if(!Ring){outward=Vector3.Cross(Direction,Vector3.up).normalized;tangent=Direction;return Origin+Direction*Distance*along+outward*lateral*width;}
+            if(!Sweep){outward=Vector3.Cross(Direction,Vector3.up).normalized;tangent=Direction;return Origin+Direction*Distance*along+outward*lateral*width;}
             float a=ringPhase+along*Mathf.PI*2;outward=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));tangent=new Vector3(-Mathf.Sin(a),0,Mathf.Cos(a));
             return Origin+outward*(RingRadius+lateral*width);
         }
-        public Vector3 Focus{get{if(!Ring)return Vector3.Lerp(Origin,Target,Mathf.Clamp01(Age/Mathf.Max(.01f,travel)));return PathPoint(Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),0,0,out _,out _);}}
+        public Vector3 Focus{get{if(!Sweep)return Vector3.Lerp(Origin,Target,Mathf.Clamp01(Age/Mathf.Max(.01f,travel)));return PathPoint(Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),0,0,out _,out _);}}
         public Vector3 FrontTangent{get{PathPoint(Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),0,0,out var t,out _);return t;}}
         public float Life=>Id=="cyber"?F("shatterTime",.75f)+F("fadeTime",.85f):F("lifetime",5)*S.F("global.lifetime",1);
         public float Fade=>F("fadeTime",F("sinkTime",1));
@@ -163,6 +170,7 @@ namespace ElementalSandbox
             }
             if(Id=="venom")core=Plane("Venom core",Mat("Energy",C("colorCore","#baff4a"),5,1.4f));
             if(Id=="acid"){ringMat=Dedicated("AcidRing");ring=Plane("Pool boundary",ringMat);}
+            if(Id=="acid"||Id=="growth"||Id=="astral"){sweepMat=Dedicated("SweepArc");sweepMat.SetColor("_Color",accent);sweepArc=Plane("Forming circle",sweepMat);sweepArc.gameObject.SetActive(false);}
             if(Id=="ward")crown=MeshPart("Runed barrier",WallMesh(),Mat("Energy",accent,3,1));
             // Only acid and astral carry a volume. Venom's gas and the rift's
             // dust are ParticleEngine emitters in the source — VenomSurgeAbility
@@ -198,9 +206,11 @@ namespace ElementalSandbox
         public void Spawn(Vector3 origin,Vector3 target)
         {
             Origin=origin;Target=target;Distance=Vector3.Distance(origin,target);Direction=(target-origin).normalized;if(Direction.sqrMagnitude<.01f)Direction=Vector3.forward;
-            // Ring: the burst sits on the caster and the front runs the circumference, starting where the caster faces.
-            if(Ring){Target=Origin;ringPhase=Mathf.Atan2(Direction.z,Direction.x);Distance=Mathf.PI*2*RingRadius;}
-            Age=previousAge=0;travel=Distance/Mathf.Max(.1f,F("speed",50)*S.F("global.speed",1));Active=true;impacted=false;shots=0;nextShot=1.7f;struck.Clear();Root.SetActive(true);particles.Clear();foreach(var l in strands)l.enabled=false;sourceEruption?.Spawn();sourceCascade?.Spawn();sourceGrowth?.Spawn();
+            SelfCast=Ring||Distance<.05f;
+            // Sweep: the burst sits on the caster and the front runs the circumference, starting where the caster faces.
+            if(Sweep){Target=Origin;ringPhase=Mathf.Atan2(Direction.z,Direction.x);Distance=Mathf.PI*2*RingRadius;}
+            Age=previousAge=0;travel=Sweep&&!Ring?Mathf.Max(.1f,F("sweepTime",.9f))/Mathf.Max(.1f,S.F("global.speed",1)):Distance/Mathf.Max(.1f,F("speed",50)*S.F("global.speed",1));
+            if(sweepArc!=null)sweepArc.gameObject.SetActive(false);Active=true;impacted=false;shots=0;nextShot=1.7f;struck.Clear();Root.SetActive(true);particles.Clear();foreach(var l in strands)l.enabled=false;sourceEruption?.Spawn();sourceCascade?.Spawn();sourceGrowth?.Spawn();
         }
         public void Retire(){Active=false;Root.SetActive(false);particles.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);}
         void Burst(Vector3 pos,int count,float speed=4)
@@ -213,6 +223,7 @@ namespace ElementalSandbox
             if(previousAge<travel&&Age>=travel){float k=Id=="acid"||Id=="astral"?1.3f:Id=="growth"?1.1f:1.2f;LightBoost=Mathf.Max(LightBoost,F("lightIntensity",10)*k*G("explosionIntensity"));}
             LightBoost=Mathf.Max(0,LightBoost-LightBoost*4.5f*dt-.5f*dt);
             if(Id=="quake")RiftDecals(previousAge-travel,t);
+            if(sweepArc!=null){bool on=SelfCast&&t<.12f;sweepArc.gameObject.SetActive(on);if(on){float quad=RingRadius*1.25f;Floor(sweepArc,Origin,quad);sweepMat.SetFloat("_QuadSize",quad*2);sweepMat.SetFloat("_Radius",RingRadius);sweepMat.SetFloat("_Phase",ringPhase);sweepMat.SetFloat("_Progress",Mathf.Clamp01(Age/Mathf.Max(.01f,travel)));sweepMat.SetFloat("_Fade",t<0?1:1-Mathf.Clamp01(t/.12f));}}
             if(t>Life+Fade){Retire();return;}
             foreach(var m in materials){m.SetFloat("_Age",Mathf.Max(0,t));m.SetFloat("_Opacity",env*S.F("global.opacity",1));}
             energy.SetFloat("_Glow",1.3f*S.F("global.glow",1));pool.SetFloat("_Glow",.9f*S.F("global.glow",1));

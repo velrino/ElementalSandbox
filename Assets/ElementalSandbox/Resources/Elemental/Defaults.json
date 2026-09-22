@@ -18892,6 +18892,27 @@
       "number": 1.6,
       "text": "",
       "flag": false
+    },
+    {
+      "key": "acid.sweepTime",
+      "kind": "number",
+      "number": 0.9,
+      "text": "",
+      "flag": false
+    },
+    {
+      "key": "growth.sweepTime",
+      "kind": "number",
+      "number": 0.9,
+      "text": "",
+      "flag": false
+    },
+    {
+      "key": "astral.sweepTime",
+      "kind": "number",
+      "number": 0.9,
+      "text": "",
+      "flag": false
     }
   ],
   "abilities": [

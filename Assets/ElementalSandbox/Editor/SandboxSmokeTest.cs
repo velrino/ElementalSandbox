@@ -25,7 +25,7 @@ namespace ElementalSandbox.Editor
             if(!SessionState.GetBool("Elemental.Smoke",false)||!EditorApplication.isPlaying||EditorApplication.isPaused)return;var app=ElementalApp.Instance;if(app==null)return;
             try{
                 if(stage<0){stage=0;deadline=EditorApplication.timeSinceStartup+1;return;}
-                if(stage==6&&waiting&&!ringShot&&EditorApplication.timeSinceStartup>=deadline-1.35){ringShot=true;float d=app.Settings.F("camera.distance",11.5f);app.Settings.Set("camera.distance",22);app.ForceCamera();Capture(app,"06-quake-ring",1100,700);app.Settings.Set("camera.distance",d);app.ForceCamera();return;}
+                if((stage==6||stage==2)&&waiting&&!ringShot&&EditorApplication.timeSinceStartup>=deadline-1.35){ringShot=true;float d=app.Settings.F("camera.distance",11.5f);app.Settings.Set("camera.distance",22);app.ForceCamera();Capture(app,stage==6?"06-quake-ring":"02-acid-sweep",1100,700);app.Settings.Set("camera.distance",d);app.ForceCamera();return;}
                 if(stage==6&&waiting&&lateShots<2&&EditorApplication.timeSinceStartup>=deadline+(lateShots==0?1.7:3.7)){float d=app.Settings.F("camera.distance",11.5f);app.Settings.Set("camera.distance",22);app.ForceCamera();Capture(app,lateShots==0?"06-quake-late35":"06-quake-late55",1100,700);app.Settings.Set("camera.distance",d);app.ForceCamera();lateShots++;return;}
                 if(EditorApplication.timeSinceStartup<deadline)return;
                 if(stage==0){Capture(app,"00-idle",1100,700);stage=1;}
