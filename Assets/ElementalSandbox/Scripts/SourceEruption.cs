@@ -79,7 +79,7 @@ namespace ElementalSandbox
                 var r=records[i];float elapsed=age-travel*r.along-r.stagger*F("riseStagger")-(r.cluster?r.radial*F(rock?"blastStagger":"burstStagger"):0);if(elapsed<0)continue;
                 float lateral=Mathf.Sign(r.lateral)*Mathf.Pow(Mathf.Abs(r.lateral),F("clumping",1))+r.scatter*F("scatter");
                 Vector3 radial=new Vector3(Mathf.Cos(r.angle),0,Mathf.Sin(r.angle));
-                Vector3 p=r.cluster?spell.Target+radial*spell.Radius*r.radial:spell.Origin+spell.Direction*spell.Distance*r.along+side*lateral*Mathf.Lerp(F("widthNear"),F("width"),Mathf.Pow(r.along,F("widthCurve",1)));
+                Vector3 tang=spell.Direction,outw=side;Vector3 p=r.cluster?spell.Target+radial*(spell.Ring?spell.RingRadius*(.75f+.45f*r.radial):spell.Radius*r.radial):spell.PathPoint(r.along,lateral,Mathf.Lerp(F("widthNear"),F("width"),Mathf.Pow(r.along,F("widthCurve",1))),out tang,out outw);
                 float h=r.cluster?F(rock?"blastHeight":"burstHeight")*Mathf.LerpUnclamped(1,1-Mathf.Clamp01(F("crown")),Mathf.Pow(r.radial,rock?1.25f:1.3f)):Mathf.Lerp(F("heightNear"),F("height"),Mathf.Pow(r.along,F("heightCurve",1)))*(1+(F("peak",1)-1)*Smooth(1-F("peakWidth"),1,r.along))*Mathf.Lerp(1,1-Mathf.Clamp01(F("crown")),Mathf.Pow(Mathf.Clamp01(Mathf.Abs(lateral)),1.4f));
                 if(r.cluster&&r.tier==0)h*=F(rock?"monolithScale":"spearScale",1);else if(r.tier==2)h*=F(rock?"blockScale":"shardScale",1);
                 h=Mathf.Max(.02f,h*(1+r.height*F("heightJitter")*randomness));
@@ -87,7 +87,7 @@ namespace ElementalSandbox
                 if(r.cluster&&r.tier==0)radius*=F(rock?"monolithGirth":"spearSlim",1);else if(r.tier==2)radius*=r.cluster?(rock?1.55f:1.5f):(rock?1.5f:1.45f);
                 radius=Mathf.Max(.01f,radius*(1+r.radius*F("radiusJitter")*randomness));
                 float bearing=r.angle+(rock?r.bearing*F("blastLeanScatter"):0);
-                Vector3 lean=r.cluster?new Vector3(Mathf.Cos(bearing),0,Mathf.Sin(bearing)):(spell.Direction*(rock?-.55f:.7f)+side*lateral*(rock?1:.9f)).normalized;
+                Vector3 lean=r.cluster?new Vector3(Mathf.Cos(bearing),0,Mathf.Sin(bearing)):(tang*(rock?-.55f:.7f)+outw*lateral*(rock?1:.9f)).normalized;
                 float outward=r.radial*(r.tier==0?(rock?.5f:.55f):1);
                 float angle=r.cluster?F(rock?"blastLean":"burstLean")*Mathf.Pow(rock?Mathf.Clamp01(outward):outward,F(rock?"blastLeanCurve":"burstLeanCurve",1)):F("lean")*Mathf.Lerp(rock?.35f:.3f,1,r.along);
                 angle*=1+r.lean*F("leanJitter")*randomness;

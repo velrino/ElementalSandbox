@@ -94,7 +94,7 @@ namespace ElementalSandbox
                 // line so the cloud is left behind it — which is what makes
                 // the front look fast.
                 carry+=dt*F("dustRate",260)*pc;int n=(int)carry;carry-=n;
-                Vector3 dir=(-spell.Direction*.5f+Vector3.up).normalized;
+                Vector3 dir=(-spell.FrontTangent*.5f+Vector3.up).normalized;
                 EmitSource(smoke,new Vector3(spell.Focus.x,.12f,spell.Focus.z),F("width",2.4f)*.5f,dir,F("dustSpeed",1.6f),.7f,.95f,.9f,.5f,F("dustLifetime",3.4f),.4f,.4f,n,sizeScale,speedScale,lifeScale);
             }
             if(t>=0&&!burst)

@@ -18871,6 +18871,20 @@
       "number": 1,
       "text": "",
       "flag": false
+    },
+    {
+      "key": "venom.guardRadius",
+      "kind": "number",
+      "number": 3.6,
+      "text": "",
+      "flag": false
+    },
+    {
+      "key": "quake.guardRadius",
+      "kind": "number",
+      "number": 4.5,
+      "text": "",
+      "flag": false
     }
   ],
   "abilities": [

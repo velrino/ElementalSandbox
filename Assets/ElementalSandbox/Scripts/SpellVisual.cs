@@ -37,7 +37,22 @@ namespace ElementalSandbox
         public Color C(string key,string fallback="#ffffff")=>S.C(Id+"."+key,fallback);
         public float G(string key)=>S.F("global."+key,1);
         public float Radius=>S.Abilities[Slot].zone?F("zoneRadius",4):F("burstRadius",F("blastRadius",3));
-        public Vector3 Focus=>Vector3.Lerp(Origin,Target,Mathf.Clamp01(Age/Mathf.Max(.01f,travel)));
+        // Venom Surge and Monolith Rift no longer run down a line the player
+        // aims: they erupt in a guard ring round the caster, the front sweeping
+        // the circle, and strike whatever stands inside it. Everything that
+        // walked the line — stones, dust, decals, the light — walks PathPoint
+        // instead, so the two shapes share one code path.
+        public bool Ring=>Id=="venom"||Id=="quake";
+        public float RingRadius=>Mathf.Max(1,F("guardRadius",4));
+        float ringPhase;
+        public Vector3 PathPoint(float along,float lateral,float width,out Vector3 tangent,out Vector3 outward)
+        {
+            if(!Ring){outward=Vector3.Cross(Direction,Vector3.up).normalized;tangent=Direction;return Origin+Direction*Distance*along+outward*lateral*width;}
+            float a=ringPhase+along*Mathf.PI*2;outward=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));tangent=new Vector3(-Mathf.Sin(a),0,Mathf.Cos(a));
+            return Origin+outward*(RingRadius+lateral*width);
+        }
+        public Vector3 Focus{get{if(!Ring)return Vector3.Lerp(Origin,Target,Mathf.Clamp01(Age/Mathf.Max(.01f,travel)));return PathPoint(Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),0,0,out _,out _);}}
+        public Vector3 FrontTangent{get{PathPoint(Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),0,0,out var t,out _);return t;}}
         public float Life=>Id=="cyber"?F("shatterTime",.75f)+F("fadeTime",.85f):F("lifetime",5)*S.F("global.lifetime",1);
         public float Fade=>F("fadeTime",F("sinkTime",1));
         public float Envelope {get {float a=Age-travel;return Mathf.Clamp01(a/.4f)*(1-Mathf.Clamp01((a-Life)/Mathf.Max(.01f,Fade)));}}
@@ -85,9 +100,8 @@ namespace ElementalSandbox
             var decals=app.Decals;if(decals==null)return;float ex=G("explosionIntensity");
             if(previousAge<=0&&Age>0){scarDistance=0;decals.Spawn(SourceDecals.Kind.DustRing,Origin,F("widthNear",.5f)*3f,F("scarLife",8)*.4f,C("colorDustCoat","#cfc6b3"),C("colorScarA","#231f1a"),.5f,.4f);}
             float front=Distance*Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),step=1/Mathf.Max(.05f,F("scarRate",1.4f));
-            Vector3 side=Vector3.Cross(Direction,Vector3.up).normalized;
             while(front-scarDistance>=step){scarDistance+=step;float s=Mathf.Clamp01(scarDistance/Mathf.Max(.1f,Distance));float w=HalfWidth(s);
-                Vector3 p=Origin+Direction*(s*Distance)+side*UnityEngine.Random.Range(-.7f,.7f)*w;
+                Vector3 p=PathPoint(s,UnityEngine.Random.Range(-.7f,.7f),w,out _,out _);
                 decals.Spawn(SourceDecals.Kind.DustRing,p,w*F("scarSpread",1.6f)*UnityEngine.Random.Range(.6f,1.2f),F("scarLife",8),C("colorScarA","#231f1a"),C("colorScarB","#3e3931"),F("scarIntensity",.22f),F("scarWidth",.45f));}
             if(previousT<0&&t>=0){
                 decals.Spawn(SourceDecals.Kind.DustRing,Target,F("ringRadius",8)*ex*.8f,F("scarLife",8)*.8f,C("colorScarA","#231f1a"),C("colorDustCoat","#cfc6b3"),.32f,.55f);
@@ -183,7 +197,10 @@ namespace ElementalSandbox
         }
         public void Spawn(Vector3 origin,Vector3 target)
         {
-            Origin=origin;Target=target;Distance=Vector3.Distance(origin,target);Direction=(target-origin).normalized;if(Direction.sqrMagnitude<.01f)Direction=Vector3.forward;Age=previousAge=0;travel=Distance/Mathf.Max(.1f,F("speed",50)*S.F("global.speed",1));Active=true;impacted=false;shots=0;nextShot=1.7f;struck.Clear();Root.SetActive(true);particles.Clear();foreach(var l in strands)l.enabled=false;sourceEruption?.Spawn();sourceCascade?.Spawn();sourceGrowth?.Spawn();
+            Origin=origin;Target=target;Distance=Vector3.Distance(origin,target);Direction=(target-origin).normalized;if(Direction.sqrMagnitude<.01f)Direction=Vector3.forward;
+            // Ring: the burst sits on the caster and the front runs the circumference, starting where the caster faces.
+            if(Ring){Target=Origin;ringPhase=Mathf.Atan2(Direction.z,Direction.x);Distance=Mathf.PI*2*RingRadius;}
+            Age=previousAge=0;travel=Distance/Mathf.Max(.1f,F("speed",50)*S.F("global.speed",1));Active=true;impacted=false;shots=0;nextShot=1.7f;struck.Clear();Root.SetActive(true);particles.Clear();foreach(var l in strands)l.enabled=false;sourceEruption?.Spawn();sourceCascade?.Spawn();sourceGrowth?.Spawn();
         }
         public void Retire(){Active=false;Root.SetActive(false);particles.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);}
         void Burst(Vector3 pos,int count,float speed=4)
@@ -216,7 +233,10 @@ namespace ElementalSandbox
             else if(Id=="rend")Rend(t,env);
             if(stone!=null){stone.SetFloat("_Opacity",Id=="cyber"?1-Mathf.Clamp01(t/Fade):Mathf.Max(env,Id=="venom"||Id=="quake"?Mathf.Clamp01(Age/.2f)*(1-Mathf.Clamp01((t-Life)/Fade)):0));for(int k=0;k<6;k++){int count=instances[k].Count;if(count==0)continue;instances[k].CopyTo(drawBuffer);Graphics.DrawMeshInstanced(MeshLibrary.Get((Id=="quake"||Id=="ward"?"monolith":Id=="cascade"||Id=="rend"?"shard":"crystal")+k),0,stone,drawBuffer,count,null,ShadowCastingMode.On,true);}}
             if(dt>0&&(t>=0||!S.Abilities[Slot].zone)&&t<Life&&Id!="growth"&&Id!="cascade"&&Id!="astral"&&Id!="ink"&&(Id!="rend"||t>=F("chargeTime",1.7f)))
-            foreach(var d in app.Dummies){if(!d.Alive||struck.Contains(d))continue;bool hit;if(S.Abilities[Slot].zone)hit=Vector3.Distance(d.Position,Target)<Radius;else{Vector3 end=Origin+Direction*Mathf.Min(Distance,Age*F("speed",23));hit=DistanceToSegment(d.Position,Origin,end)<S.F("dummies.hit.radius",1.5f);}if(hit){d.Hit(Direction*S.F("dummies.hit.impulse",6)+Vector3.up*S.F("dummies.hit.lift",3.4f));struck.Add(d);}}
+            foreach(var d in app.Dummies){if(!d.Alive||struck.Contains(d))continue;bool hit;Vector3 push=Direction;
+                if(Ring){Vector3 off=d.Position-Origin;off.y=0;float swept=Mathf.Clamp01(Age/Mathf.Max(.01f,travel)),bearing=Mathf.Repeat(Mathf.Atan2(off.z,off.x)-ringPhase,Mathf.PI*2)/(Mathf.PI*2);hit=off.magnitude<RingRadius+S.F("dummies.hit.radius",1.5f)&&bearing<=swept;push=off.sqrMagnitude>.01f?off.normalized:Vector3.forward;}
+                else if(S.Abilities[Slot].zone)hit=Vector3.Distance(d.Position,Target)<Radius;else{Vector3 end=Origin+Direction*Mathf.Min(Distance,Age*F("speed",23));hit=DistanceToSegment(d.Position,Origin,end)<S.F("dummies.hit.radius",1.5f);}
+                if(hit){d.Hit(push*S.F("dummies.hit.impulse",6)+Vector3.up*S.F("dummies.hit.lift",3.4f));struck.Add(d);}}
         }
         void Instance(int i,Vector3 p,Quaternion r,Vector3 scale){if(scale.y>.001f&&instances[i%6].Count<512)instances[i%6].Add(Matrix4x4.TRS(p,r,scale));}
         void Eruption(float t,float env)

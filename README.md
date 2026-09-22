@@ -40,7 +40,7 @@ Captures written by **Elemental Sandbox → Run visual smoke test**, rendered th
 | Cancel | Escape / right click | Choose another card |
 | Editor / pause / clear / reset targets | G / P / C / T | Onscreen buttons |
 
-The seven ground casts use a circle; Cyber Serpent, Venom Surge and Monolith Rift use a line arrow. At most four casts remain active. Per-ability pools reuse visual objects. Targets use the original FBX with articulated Unity physics and respawn after dissolving.
+The seven ground casts use a circle and Cyber Serpent a line arrow. **Venom Surge and Monolith Rift are guard casts**: no aim — click anywhere and the eruption rings the caster at `guardRadius` (venom 3.6 m, rift 4.5 m), the front sweeping the circle from where the body faces, the burst rising at the centre, and anything inside the ring struck as the front passes its bearing. This is a deliberate departure from the source, where both are line casts. At most four casts remain active. Per-ability pools reuse visual objects. Targets use the original FBX with articulated Unity physics and respawn after dissolving.
 
 ## Port contents and fidelity
 
